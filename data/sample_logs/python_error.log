@@ -1,0 +1,7 @@
+2025-09-15 14:23:01 ERROR payment-service - Traceback (most recent call last):
+2025-09-15 14:23:01 ERROR payment-service -   File "handler.py", line 87, in process_transaction
+2025-09-15 14:23:01 ERROR payment-service - MemoryError: unable to allocate memory
+2025-09-15 14:23:02 ERROR payment-service - OOM killer activated on process 4421
+2025-09-15 14:23:02 WARN  payment-service - Heap usage at 98%, threshold exceeded
+2025-09-15 14:23:03 ERROR payment-service - Connection pool exhausted: max 20 connections reached
+2025-09-15 14:23:05 FATAL payment-service - Service shutting down unexpectedly

@@ -1,0 +1,12 @@
+langchain
+langchain-groq
+langchain-community
+langchain-core
+langgraph
+chromadb
+fastapi
+uvicorn
+streamlit
+python-dotenv
+requests
+pydantic

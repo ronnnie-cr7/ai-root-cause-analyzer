@@ -1,0 +1,92 @@
+[
+  {
+    "id": "INC-001",
+    "title": "Payment Service Memory Leak",
+    "date": "2025-03-15",
+    "symptoms": "High memory usage, slow response times, OOM errors in payment-service logs",
+    "root_cause": "Memory leak in payment-service caused by unclosed database connections in the transaction handler",
+    "fix": "Increased heap size to 4GB, added connection pooling with max 20 connections, implemented circuit breaker pattern",
+    "tags": ["memory", "leak", "payment", "database", "OOM"]
+  },
+  {
+    "id": "INC-002",
+    "title": "Nginx 502 Bad Gateway Spike",
+    "date": "2025-04-02",
+    "symptoms": "Mass 502 errors in nginx logs, upstream connection refused, latency spike to 8000ms",
+    "root_cause": "Upstream FastAPI workers exhausted due to a slow database query blocking all threads",
+    "fix": "Added query timeout of 5s, increased worker count from 4 to 16, added slow query logging",
+    "tags": ["nginx", "502", "upstream", "timeout", "fastapi"]
+  },
+  {
+    "id": "INC-003",
+    "title": "Kubernetes Pod CrashLoopBackOff",
+    "date": "2025-04-18",
+    "symptoms": "Pod restarting every 30 seconds, CrashLoopBackOff status, container exit code 137",
+    "root_cause": "Container memory limit set too low at 256MB, application needed 600MB at peak load",
+    "fix": "Increased memory limit to 1GB, added liveness probe with initialDelaySeconds 60",
+    "tags": ["kubernetes", "crashloop", "memory", "OOM", "container"]
+  },
+  {
+    "id": "INC-004",
+    "title": "Database Connection Pool Exhaustion",
+    "date": "2025-05-10",
+    "symptoms": "TimeoutError acquiring connection, queue full errors, all API endpoints returning 500",
+    "root_cause": "Sudden traffic spike combined with a slow query in analytics service holding connections for 45+ seconds",
+    "fix": "Killed long-running analytics queries, set query timeout to 10s, increased pool size from 10 to 50",
+    "tags": ["database", "connection", "pool", "timeout", "500"]
+  },
+  {
+    "id": "INC-005",
+    "title": "Python Service Unhandled Exception Loop",
+    "date": "2025-06-01",
+    "symptoms": "Repeated Traceback errors in logs, service degraded but not down, error rate 40%",
+    "root_cause": "NullPointerException in user profile handler when optional field 'address' was missing from request",
+    "fix": "Added null check for optional fields, added global exception handler, improved input validation",
+    "tags": ["python", "exception", "null", "traceback", "validation"]
+  },
+  {
+    "id": "INC-006",
+    "title": "Redis Cache Stampede",
+    "date": "2025-06-20",
+    "symptoms": "Database CPU at 100%, Redis hit rate dropped to 5%, response times 10x normal",
+    "root_cause": "Cache keys expired simultaneously at midnight causing all requests to hit database at once",
+    "fix": "Added jitter to cache TTL values, implemented cache warming script before expiry",
+    "tags": ["redis", "cache", "stampede", "database", "TTL"]
+  },
+  {
+    "id": "INC-007",
+    "title": "Disk Space Exhaustion on Log Server",
+    "date": "2025-07-05",
+    "symptoms": "Services failing to write logs, disk usage at 100%, write errors across all services",
+    "root_cause": "Log rotation policy misconfigured, debug logs accumulated for 60 days without cleanup",
+    "fix": "Deleted old logs, set log rotation to 7 days, added disk usage alerting at 80% threshold",
+    "tags": ["disk", "storage", "logs", "rotation", "full"]
+  },
+  {
+    "id": "INC-008",
+    "title": "SSL Certificate Expiry Causing Auth Failures",
+    "date": "2025-07-22",
+    "symptoms": "SSL handshake errors, authentication service returning 503, certificate expired errors",
+    "root_cause": "SSL certificate for auth.internal expired, no automated renewal was configured",
+    "fix": "Renewed certificate, configured auto-renewal with certbot, added 30-day expiry alert",
+    "tags": ["ssl", "certificate", "auth", "expired", "503"]
+  },
+  {
+    "id": "INC-009",
+    "title": "API Rate Limit Causing Cascade Failure",
+    "date": "2025-08-10",
+    "symptoms": "Third party API returning 429, internal service retrying aggressively, self-inflicted DDoS",
+    "root_cause": "Retry logic had no exponential backoff, caused thundering herd against rate-limited external API",
+    "fix": "Added exponential backoff with jitter, added circuit breaker, cached API responses for 60s",
+    "tags": ["rate-limit", "429", "retry", "backoff", "cascade"]
+  },
+  {
+    "id": "INC-010",
+    "title": "Docker Container OOM Killed",
+    "date": "2025-09-01",
+    "symptoms": "Container suddenly stops, exit code 137 in Docker logs, no graceful shutdown",
+    "root_cause": "ML model loaded entirely into memory during inference, exceeded container limit of 512MB",
+    "fix": "Increased container memory to 2GB, implemented model lazy loading, added memory profiling",
+    "tags": ["docker", "OOM", "memory", "ML", "container", "137"]
+  }
+]
