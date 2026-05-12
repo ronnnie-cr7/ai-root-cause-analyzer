@@ -5,6 +5,11 @@ matches against historical incidents, identifies root causes, and suggests actio
 
 Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 
+## 🌐 Live Demo
+
+- **Frontend:** https://ai-root-cause-analyzer.streamlit.app
+- **API Docs:** https://ai-root-cause-analyzer-mogq.onrender.com/docs
+
 ---
 
 ## 🏗️ Architecture
@@ -45,7 +50,7 @@ to each other through shared state — no agent does more than one job.
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/yourusername/ai-root-cause-analyzer
+git clone https://github.com/ronnnie-cr7/ai-root-cause-analyzer
 cd ai-root-cause-analyzer
 ```
 
