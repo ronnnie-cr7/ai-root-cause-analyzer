@@ -1,6 +1,6 @@
 # 🔍 AI Root Cause Analyzer
 
-A multi-agent AI system that automatically analyzes system logs, detects anomalies, 
+A multi-agent AI system that automatically analyzes system logs, detects anomalies,
 matches against historical incidents, identifies root causes, and suggests actionable fixes.
 
 Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
@@ -16,7 +16,7 @@ Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 
 Raw Logs → [Log Parser Agent] → [Anomaly Detection Agent] → [RAG Agent] → [Root Cause Agent] → [Fix Suggestion Agent] → Final Report
 
-Each agent is a specialized node in a LangGraph workflow. Agents pass context 
+Each agent is a specialized node in a LangGraph workflow. Agents pass context
 to each other through shared state — no agent does more than one job.
 
 ---
@@ -39,7 +39,8 @@ to each other through shared state — no agent does more than one job.
 |---|---|
 | Multi-Agent Orchestration | LangGraph |
 | LLM + RAG | LangChain + Groq (Llama 3.3 70B) |
-| Vector Memory | ChromaDB |
+| Embeddings | SentenceTransformers (all-MiniLM-L6-v2) |
+| Vector Memory | ChromaDB — 30 past incidents |
 | Backend API | FastAPI |
 | Frontend | Streamlit |
 | Deployment | Docker + Docker Compose |
@@ -77,9 +78,21 @@ docker-compose up --build
 
 ## 📸 Demo Flow
 
-1. Paste or upload a log file into the Streamlit UI
-2. Watch all 5 agents run in sequence
-3. System outputs root cause, matched past incident, and fix suggestions with confidence scores
+1. Click a sample log button (Python, Nginx, or Kubernetes)
+2. Hit Analyze and watch all 5 agents run in sequence
+3. System outputs root cause with confidence score, matched past incident, and fix suggestions
+4. Download the full report as a text file
+
+---
+
+## ✨ Features
+
+- **3 sample log types** — Python errors, Nginx 502s, Kubernetes CrashLoops
+- **Confidence meters** — visual progress bars for anomaly and root cause confidence
+- **RAG memory** — 30 past incidents in ChromaDB with SentenceTransformer embeddings
+- **Session dashboard** — tracks analyses run, average confidence, anomaly types
+- **Download report** — export full analysis as a text file
+- **Docker deployment** — entire stack runs with one command
 
 ---
 
@@ -101,6 +114,7 @@ ai-root-cause-analyzer/
 ## 💡 Key Design Decisions
 
 - **Specialized agents over one big prompt** — each agent is an expert at one thing
+- **SentenceTransformer embeddings** — proper semantic search, similarity scores 0.7+ vs 0.1 with default embeddings
 - **RAG memory layer** — system learns from past incidents, not just current logs
 - **Groq over OpenAI** — 10x faster inference, free tier, perfect for multi-agent chains
 - **Confidence scores** — every output includes a confidence score so engineers can trust the result
