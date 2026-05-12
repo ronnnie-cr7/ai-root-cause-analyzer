@@ -20,10 +20,10 @@ def get_vectorstore():
 def seed_incidents():
     collection = get_vectorstore()
     
-    # Don't re-seed if already has data
+    # re-seed
     if collection.count() > 0:
-        print(f"Collection already has {collection.count()} incidents. Skipping seed.")
-        return
+        collection.delete(ids=collection.get()["ids"])
+        print("Cleared old incidents. Re-seeding...")
     
     with open(PAST_INCIDENTS_PATH, "r") as f:
         incidents = json.load(f)

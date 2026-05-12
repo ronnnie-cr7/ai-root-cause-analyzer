@@ -40,7 +40,7 @@
     "title": "Python Service Unhandled Exception Loop",
     "date": "2025-06-01",
     "symptoms": "Repeated Traceback errors in logs, service degraded but not down, error rate 40%",
-    "root_cause": "NullPointerException in user profile handler when optional field 'address' was missing from request",
+    "root_cause": "NullPointerException in user profile handler when optional field address was missing from request",
     "fix": "Added null check for optional fields, added global exception handler, improved input validation",
     "tags": ["python", "exception", "null", "traceback", "validation"]
   },
@@ -88,5 +88,185 @@
     "root_cause": "ML model loaded entirely into memory during inference, exceeded container limit of 512MB",
     "fix": "Increased container memory to 2GB, implemented model lazy loading, added memory profiling",
     "tags": ["docker", "OOM", "memory", "ML", "container", "137"]
+  },
+  {
+    "id": "INC-011",
+    "title": "AWS S3 Timeout Causing Upload Failures",
+    "date": "2025-09-10",
+    "symptoms": "File uploads timing out after 30s, S3 connection errors, users reporting failed uploads",
+    "root_cause": "S3 bucket region mismatch causing cross-region latency, combined with large file sizes exceeding timeout",
+    "fix": "Moved bucket to same region as application, implemented multipart upload for files over 5MB",
+    "tags": ["aws", "s3", "timeout", "upload", "region"]
+  },
+  {
+    "id": "INC-012",
+    "title": "CPU Spike from Infinite Loop in Worker",
+    "date": "2025-09-15",
+    "symptoms": "CPU at 100% on worker node, all other services slowing down, worker unresponsive",
+    "root_cause": "Infinite loop triggered in background job processor when message queue returned malformed payload",
+    "fix": "Added payload validation before processing, added CPU usage alert at 85%, added job timeout of 60s",
+    "tags": ["cpu", "loop", "worker", "queue", "payload"]
+  },
+  {
+    "id": "INC-013",
+    "title": "Elasticsearch Index Corruption",
+    "date": "2025-09-20",
+    "symptoms": "Search returning 500 errors, index health showing red status, shard allocation failures",
+    "root_cause": "Unexpected node restart during index write caused shard corruption on primary node",
+    "fix": "Restored index from snapshot, enabled index replication factor 2, added snapshot policy every 6 hours",
+    "tags": ["elasticsearch", "index", "corruption", "shard", "500"]
+  },
+  {
+    "id": "INC-014",
+    "title": "gRPC Service Deadline Exceeded",
+    "date": "2025-09-25",
+    "symptoms": "gRPC calls returning DEADLINE_EXCEEDED, downstream services timing out, latency p99 at 15s",
+    "root_cause": "Database index missing on frequently queried column causing full table scans on every gRPC call",
+    "fix": "Added composite index on user_id and created_at columns, query time dropped from 12s to 50ms",
+    "tags": ["grpc", "deadline", "timeout", "database", "index"]
+  },
+  {
+    "id": "INC-015",
+    "title": "Kafka Consumer Lag Spike",
+    "date": "2025-10-01",
+    "symptoms": "Consumer lag growing to 500k messages, event processing delayed by 2 hours, downstream stale data",
+    "root_cause": "Single consumer instance processing slow due to a downstream HTTP call with no timeout set",
+    "fix": "Added 2s timeout to downstream HTTP calls, scaled consumer group from 1 to 6 instances",
+    "tags": ["kafka", "consumer", "lag", "timeout", "scaling"]
+  },
+  {
+    "id": "INC-016",
+    "title": "Load Balancer Health Check Failure",
+    "date": "2025-10-05",
+    "symptoms": "Load balancer removing all backend instances, 503 errors for all users, health check failing",
+    "root_cause": "Health check endpoint queried database on every call, database slowdown caused health checks to timeout",
+    "fix": "Changed health check to lightweight ping endpoint with no database dependency, set timeout to 5s",
+    "tags": ["load-balancer", "health-check", "503", "database", "timeout"]
+  },
+  {
+    "id": "INC-017",
+    "title": "JWT Token Expiry Causing Mass Logout",
+    "date": "2025-10-10",
+    "symptoms": "All users logged out simultaneously, 401 errors across all services, auth service overwhelmed",
+    "root_cause": "JWT secret key rotated without implementing graceful transition period, all existing tokens invalidated",
+    "fix": "Implemented dual-key validation during rotation, added 24-hour transition window for old tokens",
+    "tags": ["jwt", "auth", "401", "token", "rotation"]
+  },
+  {
+    "id": "INC-018",
+    "title": "MongoDB Write Lock Contention",
+    "date": "2025-10-15",
+    "symptoms": "Write operations queuing up, read latency spiking, MongoDB op queue growing",
+    "root_cause": "Unindexed field used in update filter causing collection-level write lock on every update",
+    "fix": "Added index on the filter field, rewrote bulk update to use updateMany with indexed fields",
+    "tags": ["mongodb", "write", "lock", "index", "latency"]
+  },
+  {
+    "id": "INC-019",
+    "title": "Microservice Circular Dependency Deadlock",
+    "date": "2025-10-20",
+    "symptoms": "Two services hanging indefinitely, no errors in logs, requests never completing",
+    "root_cause": "Service A called Service B while holding a lock, Service B tried to call Service A causing deadlock",
+    "fix": "Broke circular dependency by introducing async event-based communication via message queue",
+    "tags": ["microservice", "deadlock", "circular", "dependency", "async"]
+  },
+  {
+    "id": "INC-020",
+    "title": "DNS Resolution Failure in Kubernetes",
+    "date": "2025-10-25",
+    "symptoms": "Internal service calls failing with connection refused, DNS lookup timeouts, CoreDNS errors",
+    "root_cause": "CoreDNS pod OOMKilled due to DNS amplification from a misconfigured service discovery loop",
+    "fix": "Restarted CoreDNS pods, increased CoreDNS memory limit, fixed service discovery loop in config",
+    "tags": ["dns", "kubernetes", "coredns", "OOM", "service-discovery"]
+  },
+  {
+    "id": "INC-021",
+    "title": "Python Celery Worker Starvation",
+    "date": "2025-11-01",
+    "symptoms": "Tasks queued but not processing, worker processes idle, queue depth growing",
+    "root_cause": "Long running task acquired all worker slots, short tasks had no workers available",
+    "fix": "Configured separate queues for long and short tasks, set task time limit of 300s",
+    "tags": ["celery", "worker", "starvation", "queue", "python"]
+  },
+  {
+    "id": "INC-022",
+    "title": "Network Partition Between Availability Zones",
+    "date": "2025-11-05",
+    "symptoms": "Services in AZ-B cannot reach services in AZ-A, split brain condition, data inconsistency",
+    "root_cause": "Misconfigured security group rule blocked inter-AZ traffic after routine network update",
+    "fix": "Corrected security group rules, implemented AZ-aware routing, added cross-AZ connectivity monitoring",
+    "tags": ["network", "partition", "availability-zone", "security-group", "split-brain"]
+  },
+  {
+    "id": "INC-023",
+    "title": "Container Registry Pull Rate Limit",
+    "date": "2025-11-10",
+    "symptoms": "Pod deployments failing, image pull errors, ErrImagePull status in Kubernetes",
+    "root_cause": "Docker Hub pull rate limit hit due to all nodes pulling images anonymously without authentication",
+    "fix": "Added Docker Hub credentials as Kubernetes secret, configured imagePullSecrets on all deployments",
+    "tags": ["docker", "registry", "rate-limit", "kubernetes", "image-pull"]
+  },
+  {
+    "id": "INC-024",
+    "title": "FastAPI Async Deadlock Under Load",
+    "date": "2025-11-15",
+    "symptoms": "API freezing under load, requests hanging indefinitely, no timeout errors just silence",
+    "root_cause": "Synchronous database call inside async FastAPI endpoint blocking the event loop",
+    "fix": "Replaced sync db calls with async equivalents using asyncpg, added request timeout middleware",
+    "tags": ["fastapi", "async", "deadlock", "event-loop", "database"]
+  },
+  {
+    "id": "INC-025",
+    "title": "Prometheus Metrics Cardinality Explosion",
+    "date": "2025-11-20",
+    "symptoms": "Prometheus memory usage growing rapidly, scraping timeouts, Grafana dashboards slow",
+    "root_cause": "Developer added user_id as a metric label causing millions of unique time series",
+    "fix": "Removed high cardinality labels, aggregated user metrics at application level before exposing",
+    "tags": ["prometheus", "metrics", "cardinality", "memory", "grafana"]
+  },
+  {
+    "id": "INC-026",
+    "title": "Cold Start Latency in Serverless Function",
+    "date": "2025-11-25",
+    "symptoms": "First requests taking 8-10 seconds, users reporting slow initial load, timeout errors on cold starts",
+    "root_cause": "Lambda function loading entire ML model on cold start, model size was 1.2GB",
+    "fix": "Implemented model caching layer, reduced model size with quantization, added provisioned concurrency",
+    "tags": ["lambda", "serverless", "cold-start", "latency", "ML"]
+  },
+  {
+    "id": "INC-027",
+    "title": "RabbitMQ Queue Memory Alarm",
+    "date": "2025-12-01",
+    "symptoms": "RabbitMQ blocking publishers, memory alarm triggered, messages not being consumed",
+    "root_cause": "Consumer crashed silently, messages accumulated in queue for 6 hours before alarm triggered",
+    "fix": "Added consumer health monitoring, set queue max length with dead letter exchange, added alerting",
+    "tags": ["rabbitmq", "queue", "memory", "consumer", "alarm"]
+  },
+  {
+    "id": "INC-028",
+    "title": "TLS Handshake Timeout Between Services",
+    "date": "2025-12-05",
+    "symptoms": "Internal service calls failing with TLS handshake timeout, error rate 30%, latency spike",
+    "root_cause": "mTLS certificate rotation left services with mismatched certificates during transition",
+    "fix": "Implemented rolling certificate rotation with overlap period, added certificate expiry monitoring",
+    "tags": ["tls", "certificate", "handshake", "mtls", "timeout"]
+  },
+  {
+    "id": "INC-029",
+    "title": "Log Aggregation Pipeline Backpressure",
+    "date": "2025-12-10",
+    "symptoms": "Logs delayed by 30 minutes, Logstash pipeline backed up, disk filling on log servers",
+    "root_cause": "Elasticsearch indexing slow due to large number of dynamic fields causing mapping explosion",
+    "fix": "Added explicit field mappings, disabled dynamic mapping, increased Logstash pipeline workers",
+    "tags": ["logstash", "elasticsearch", "backpressure", "mapping", "pipeline"]
+  },
+  {
+    "id": "INC-030",
+    "title": "GraphQL N+1 Query Problem",
+    "date": "2025-12-15",
+    "symptoms": "GraphQL queries taking 20+ seconds, database connections exhausted, high CPU on DB server",
+    "root_cause": "GraphQL resolver executing individual DB query for each item in list, 500 items = 500 queries",
+    "fix": "Implemented DataLoader for batching, reduced 500 queries to 1, response time dropped to 200ms",
+    "tags": ["graphql", "N+1", "database", "performance", "resolver"]
   }
 ]
