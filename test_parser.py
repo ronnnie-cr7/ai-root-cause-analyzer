@@ -1,22 +1,14 @@
 from graph.workflow import run_analysis
 
-raw_logs = open("data/sample_logs/python_error.log").read()
+print("TEST 1 — Valid logs")
+result = run_analysis(open("data/sample_logs/python_error.log").read())
+print(f"Valid: {result.get('is_valid')}")
+print(f"Severity: {result.get('severity')}")
+print(f"Confidence: {result.get('confidence_score')}")
+print(f"Loops: {result.get('loop_count')}")
+print(f"Root Cause: {result.get('root_cause', '')[:200]}")
 
-print("Starting full analysis pipeline...\n")
-result = run_analysis(raw_logs)
-
-print("\n========== FINAL REPORT ==========")
-print("\n--- PARSED LOGS ---")
-print(result["parsed_logs"])
-
-print("\n--- ANOMALY REPORT ---")
-print(result["anomaly_report"])
-
-print("\n--- RAG CONTEXT ---")
-print(result["rag_context"])
-
-print("\n--- ROOT CAUSE ---")
-print(result["root_cause"])
-
-print("\n--- FIX SUGGESTIONS ---")
-print(result["fix_suggestions"])
+print("\nTEST 2 — Invalid input")
+result2 = run_analysis("hello my name is ronit and i like cricket")
+print(f"Valid: {result2.get('is_valid')}")
+print(f"Response: {result2.get('fix_suggestions')}")

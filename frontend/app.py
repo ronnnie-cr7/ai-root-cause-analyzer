@@ -42,15 +42,16 @@ if "confidence_scores" not in st.session_state:
     st.session_state.confidence_scores = []
 
 st.title("🔍 AI Root Cause Analyzer")
-st.caption("Multi-agent system that analyzes logs and identifies root causes automatically")
+st.caption("Agentic AI system that validates, routes, and analyzes logs with confidence-based decision making")
 
 if st.session_state.analysis_count > 0:
     st.divider()
     st.subheader("📊 Session Dashboard")
-    d1, d2, d3 = st.columns(3)
+    d1, d2, d3, d4 = st.columns(4)
     d1.metric("Analyses Run", st.session_state.analysis_count)
     d2.metric("Avg Confidence", f"{int(sum(st.session_state.confidence_scores) / len(st.session_state.confidence_scores))}%" if st.session_state.confidence_scores else "N/A")
     d3.metric("Last Anomaly Type", st.session_state.anomaly_types[-1] if st.session_state.anomaly_types else "N/A")
+    d4.metric("Total Loops", sum(st.session_state.get("loop_counts", [0])))
 
 st.divider()
 
@@ -88,13 +89,16 @@ if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
         st.error("Please provide logs first.")
     else:
         st.subheader("⚙️ Agents Running...")
+        step0 = st.status("🛡️ Validator Agent — Checking input", expanded=False)
         step1 = st.status("📋 Log Parser Agent", expanded=False)
+        step1b = st.status("🔀 Router Agent — Deciding strategy", expanded=False)
         step2 = st.status("⚠️ Anomaly Detection Agent", expanded=False)
         step3 = st.status("🕰️ RAG Agent — Searching past incidents", expanded=False)
         step4 = st.status("🎯 Root Cause Agent", expanded=False)
+        step4b = st.status("🔍 Confidence Checker", expanded=False)
         step5 = st.status("🛠️ Fix Suggestion Agent", expanded=False)
 
-        step1.update(state="running")
+        step0.update(state="running")
 
         try:
             response = requests.post(
@@ -103,70 +107,98 @@ if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
             )
             result = response.json()
 
-            st.session_state.analysis_count += 1
-            anomaly_line = [l for l in result["anomaly_report"].split("\n") if "ANOMALY TYPE:" in l]
-            if anomaly_line:
-                st.session_state.anomaly_types.append(anomaly_line[0].replace("ANOMALY TYPE:", "").strip())
-            rc_conf = re.search(r'CONFIDENCE:\s*(\d+)/100', result["root_cause"])
-            if rc_conf:
-                st.session_state.confidence_scores.append(int(rc_conf.group(1)))
+            if not result.get("is_valid"):
+                step0.update(state="error")
+                st.error(f"❌ Invalid Input: {result.get('validation_reason', 'Input does not appear to be valid system logs.')}")
+            else:
+                step0.update(state="complete")
+                step1.update(state="complete")
+                step1b.update(state="complete")
+                step2.update(state="complete")
+                step3.update(state="complete")
+                step4.update(state="complete")
+                step4b.update(state="complete")
+                step5.update(state="complete")
 
-            step1.update(state="complete")
-            step2.update(state="complete")
-            step3.update(state="complete")
-            step4.update(state="complete")
-            step5.update(state="complete")
+                st.session_state.analysis_count += 1
+                if "loop_counts" not in st.session_state:
+                    st.session_state.loop_counts = []
+                st.session_state.loop_counts.append(result.get("loop_count", 1))
 
-            st.success("Analysis complete!")
-            st.divider()
+                anomaly_line = [l for l in result["anomaly_report"].split("\n") if "ANOMALY TYPE:" in l]
+                if anomaly_line:
+                    st.session_state.anomaly_types.append(anomaly_line[0].replace("ANOMALY TYPE:", "").strip())
+                rc_conf = re.search(r'CONFIDENCE:\s*(\d+)/100', result.get("root_cause", ""))
+                if rc_conf:
+                    st.session_state.confidence_scores.append(int(rc_conf.group(1)))
 
-            col1, col2 = st.columns(2)
+                severity = result.get("severity", "UNKNOWN")
+                if severity == "CRITICAL":
+                    st.error(f"🚨 Severity: {severity}")
+                elif severity == "HIGH":
+                    st.warning(f"⚠️ Severity: {severity}")
+                else:
+                    st.info(f"ℹ️ Severity: {severity}")
 
-            with col1:
-                st.subheader("📋 Parsed Logs")
-                st.code(result["parsed_logs"], language="text")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Log Type", result.get("log_type", "unknown").upper())
+                c2.metric("Confidence Score", f"{result.get('confidence_score', 0)}/100")
+                c3.metric("Analysis Loops", result.get("loop_count", 1))
 
-                st.subheader("⚠️ Anomaly Report")
-                anomaly_text = result["anomaly_report"]
-                confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', anomaly_text)
-                if confidence_match:
-                    confidence = int(confidence_match.group(1))
-                    st.metric("Confidence Score", f"{confidence}/100")
-                    st.progress(confidence / 100)
-                st.code(anomaly_text, language="text")
+                st.divider()
 
-            with col2:
-                st.subheader("🕰️ Similar Past Incidents")
-                if result["similar_incidents"]:
-                    for inc in result["similar_incidents"]:
-                        with st.expander(f"{inc['id']} — {inc['title']} (score: {inc['similarity_score']})"):
-                            st.write(f"**Date:** {inc['date']}")
-                            st.write(f"**Root Cause:** {inc['root_cause']}")
-                            st.write(f"**Fix Applied:** {inc['fix']}")
+                col1, col2 = st.columns(2)
 
-                st.subheader("🔗 RAG Context")
-                st.code(result["rag_context"], language="text")
+                with col1:
+                    st.subheader("📋 Parsed Logs")
+                    st.code(result["parsed_logs"], language="text")
 
-            st.divider()
+                    st.subheader("⚠️ Anomaly Report")
+                    anomaly_text = result["anomaly_report"]
+                    confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', anomaly_text)
+                    if confidence_match:
+                        confidence = int(confidence_match.group(1))
+                        st.metric("Anomaly Confidence", f"{confidence}/100")
+                        st.progress(confidence / 100)
+                    st.code(anomaly_text, language="text")
 
-            st.subheader("🎯 Root Cause")
-            root_cause_text = result["root_cause"]
-            rc_confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', root_cause_text)
-            if rc_confidence_match:
-                rc_confidence = int(rc_confidence_match.group(1))
-                st.metric("Root Cause Confidence", f"{rc_confidence}/100")
-                st.progress(rc_confidence / 100)
-            st.code(root_cause_text, language="text")
+                with col2:
+                    st.subheader("🕰️ Similar Past Incidents")
+                    if result["similar_incidents"]:
+                        for inc in result["similar_incidents"]:
+                            with st.expander(f"{inc['id']} — {inc['title']} (score: {inc['similarity_score']})"):
+                                st.write(f"**Date:** {inc['date']}")
+                                st.write(f"**Root Cause:** {inc['root_cause']}")
+                                st.write(f"**Fix Applied:** {inc['fix']}")
 
-            st.subheader("🛠️ Fix Suggestions")
-            st.code(result["fix_suggestions"], language="text")
+                    st.subheader("🔗 RAG Context")
+                    st.code(result["rag_context"], language="text")
 
-            st.divider()
+                st.divider()
 
-            full_report = f"""
+                st.subheader("🎯 Root Cause")
+                root_cause_text = result["root_cause"]
+                rc_confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', root_cause_text)
+                if rc_confidence_match:
+                    rc_confidence = int(rc_confidence_match.group(1))
+                    st.metric("Root Cause Confidence", f"{rc_confidence}/100")
+                    st.progress(rc_confidence / 100)
+                st.code(root_cause_text, language="text")
+
+                st.subheader("🛠️ Fix Suggestions")
+                st.code(result["fix_suggestions"], language="text")
+
+                st.divider()
+
+                full_report = f"""
 AI ROOT CAUSE ANALYZER — FULL REPORT
 Generated by AI Root Cause Analyzer
 =====================================
+
+LOG TYPE: {result.get("log_type", "unknown").upper()}
+SEVERITY: {result.get("severity", "unknown")}
+CONFIDENCE SCORE: {result.get("confidence_score", 0)}/100
+ANALYSIS LOOPS: {result.get("loop_count", 1)}
 
 PARSED LOGS
 -----------
@@ -179,14 +211,14 @@ ANOMALY REPORT
 SIMILAR PAST INCIDENTS
 ----------------------
 """
-            for inc in result["similar_incidents"]:
-                full_report += f"""
+                for inc in result["similar_incidents"]:
+                    full_report += f"""
 {inc["id"]} — {inc["title"]} (similarity: {inc["similarity_score"]})
 Date: {inc["date"]}
 Root Cause: {inc["root_cause"]}
 Fix: {inc["fix"]}
 """
-            full_report += f"""
+                full_report += f"""
 RAG CONTEXT
 -----------
 {result["rag_context"]}
@@ -200,14 +232,14 @@ FIX SUGGESTIONS
 {result["fix_suggestions"]}
 """
 
-            st.download_button(
-                label="📥 Download Full Report",
-                data=full_report,
-                file_name="root_cause_report.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
+                st.download_button(
+                    label="📥 Download Full Report",
+                    data=full_report,
+                    file_name="root_cause_report.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
 
         except Exception as e:
-            step1.update(state="error")
+            step0.update(state="error")
             st.error(f"Error connecting to API: {e}")

@@ -24,12 +24,18 @@ def root():
 async def analyze_logs(input: LogInput):
     result = run_analysis(input.logs)
     return {
+        "is_valid": result.get("is_valid"),
+        "validation_reason": result.get("validation_reason"),
+        "severity": result.get("severity"),
+        "log_type": result.get("log_type"),
         "parsed_logs": result.get("parsed_logs"),
         "anomaly_report": result.get("anomaly_report"),
         "rag_context": result.get("rag_context"),
         "root_cause": result.get("root_cause"),
         "fix_suggestions": result.get("fix_suggestions"),
-        "similar_incidents": result.get("similar_incidents_raw", [])
+        "similar_incidents": result.get("similar_incidents_raw", []),
+        "confidence_score": result.get("confidence_score"),
+        "loop_count": result.get("loop_count")
     }
 
 @app.post("/analyze/file")
@@ -39,12 +45,18 @@ async def analyze_file(file: UploadFile = File(...)):
     result = run_analysis(logs)
     return {
         "filename": file.filename,
+        "is_valid": result.get("is_valid"),
+        "validation_reason": result.get("validation_reason"),
+        "severity": result.get("severity"),
+        "log_type": result.get("log_type"),
         "parsed_logs": result.get("parsed_logs"),
         "anomaly_report": result.get("anomaly_report"),
         "rag_context": result.get("rag_context"),
         "root_cause": result.get("root_cause"),
         "fix_suggestions": result.get("fix_suggestions"),
-        "similar_incidents": result.get("similar_incidents_raw", [])
+        "similar_incidents": result.get("similar_incidents_raw", []),
+        "confidence_score": result.get("confidence_score"),
+        "loop_count": result.get("loop_count")
     }
 
 if __name__ == "__main__":
