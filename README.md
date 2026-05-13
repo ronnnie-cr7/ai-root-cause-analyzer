@@ -1,7 +1,6 @@
 # 🔍 AI Root Cause Analyzer
 
-A multi-agent AI system that automatically analyzes system logs, detects anomalies,
-matches against historical incidents, identifies root causes, and suggests actionable fixes.
+A production-grade agentic AI system that validates, routes, and analyzes system logs using a multi-agent LangGraph architecture with confidence-based decision making.
 
 Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 
@@ -12,12 +11,26 @@ Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Agentic Architecture
 
-Raw Logs → [Log Parser Agent] → [Anomaly Detection Agent] → [RAG Agent] → [Root Cause Agent] → [Fix Suggestion Agent] → Final Report
+```
+Input → [Validator] → [Log Parser] → [Router] → [Anomaly Detector] → [RAG Agent]
+                                                                           ↓
+                                                                   [Root Cause Agent]
+                                                                           ↓
+                                                                  [Confidence Checker]
+                                                                    ↙           ↘
+                                                            score < 80      score ≥ 80
+                                                          loop back to       [Fix Agent]
+                                                           RAG Agent             ↓
+                                                          (max 3 loops)      Final Report
+```
 
-Each agent is a specialized node in a LangGraph workflow. Agents pass context
-to each other through shared state — no agent does more than one job.
+This is a true agentic system — not a fixed pipeline. The agent:
+- **Validates** input before wasting API calls
+- **Routes** based on severity (CRITICAL / HIGH / LOW)
+- **Loops back** if confidence is too low
+- **Stops early** on invalid input
 
 ---
 
@@ -25,10 +38,13 @@ to each other through shared state — no agent does more than one job.
 
 | Agent | Job |
 |---|---|
+| Validator | Checks if input is actually valid system logs |
 | Log Parser | Structures raw messy logs into clean data |
+| Router | Decides severity and analysis depth |
 | Anomaly Detector | Finds patterns, severity, and confidence score |
 | RAG Agent | Searches ChromaDB for similar past incidents |
 | Root Cause Analyzer | Synthesizes everything into a definitive root cause |
+| Confidence Checker | Decides to loop back or proceed based on confidence |
 | Fix Suggester | Provides immediate, short term, and long term fixes |
 
 ---
@@ -37,8 +53,9 @@ to each other through shared state — no agent does more than one job.
 
 | Layer | Technology |
 |---|---|
-| Multi-Agent Orchestration | LangGraph |
-| LLM + RAG | LangChain + Groq (Llama 3.3 70B) |
+| Multi-Agent Orchestration | LangGraph with conditional edges |
+| LLM | Groq (Llama 3.3 70B) |
+| RAG + Chains | LangChain |
 | Embeddings | SentenceTransformers (all-MiniLM-L6-v2) |
 | Vector Memory | ChromaDB — 30 past incidents |
 | Backend API | FastAPI |
@@ -79,18 +96,21 @@ docker-compose up --build
 ## 📸 Demo Flow
 
 1. Click a sample log button (Python, Nginx, or Kubernetes)
-2. Hit Analyze and watch all 5 agents run in sequence
-3. System outputs root cause with confidence score, matched past incident, and fix suggestions
-4. Download the full report as a text file
+2. Watch 8 agents run with live status updates
+3. System validates input, routes by severity, analyzes with confidence scoring
+4. If confidence is low the system automatically loops back for deeper analysis
+5. Download the full report as a text file
 
 ---
 
 ## ✨ Features
 
+- **Input validation** — rejects garbage input before wasting API calls
+- **Severity routing** — CRITICAL / HIGH / LOW with visual badges
+- **Confidence loop** — automatically re-analyzes if confidence below 80%
 - **3 sample log types** — Python errors, Nginx 502s, Kubernetes CrashLoops
-- **Confidence meters** — visual progress bars for anomaly and root cause confidence
-- **RAG memory** — 30 past incidents in ChromaDB with SentenceTransformer embeddings
-- **Session dashboard** — tracks analyses run, average confidence, anomaly types
+- **Semantic RAG** — SentenceTransformer embeddings, 0.7+ similarity scores
+- **Session dashboard** — tracks analyses run, avg confidence, total loops
 - **Download report** — export full analysis as a text file
 - **Docker deployment** — entire stack runs with one command
 
@@ -101,7 +121,15 @@ docker-compose up --build
 ```
 ai-root-cause-analyzer/
 ├── agents/          # One file per agent, one job per agent
-├── graph/           # LangGraph workflow connecting all agents
+│   ├── validator_agent.py
+│   ├── log_parser_agent.py
+│   ├── router_agent.py
+│   ├── anomaly_agent.py
+│   ├── rag_agent.py
+│   ├── root_cause_agent.py
+│   ├── confidence_checker.py
+│   └── fix_agent.py
+├── graph/           # LangGraph workflow with conditional edges
 ├── rag/             # ChromaDB setup and past incidents seeding
 ├── api/             # FastAPI backend
 ├── frontend/        # Streamlit UI
@@ -113,17 +141,18 @@ ai-root-cause-analyzer/
 
 ## 💡 Key Design Decisions
 
-- **Specialized agents over one big prompt** — each agent is an expert at one thing
-- **SentenceTransformer embeddings** — proper semantic search, similarity scores 0.7+ vs 0.1 with default embeddings
-- **RAG memory layer** — system learns from past incidents, not just current logs
-- **Groq over OpenAI** — 10x faster inference, free tier, perfect for multi-agent chains
-- **Confidence scores** — every output includes a confidence score so engineers can trust the result
+- **True agentic over fixed pipeline** — conditional edges and confidence loops make this a genuine agent, not just a sequential chain
+- **Validator guardrail** — invalid input is rejected before any LLM calls, saving tokens and API quota
+- **Severity-based routing** — CRITICAL incidents get DEEP analysis, LOW severity gets STANDARD
+- **SentenceTransformer embeddings** — 0.7+ similarity vs 0.1 with default embeddings
+- **Max loop limit** — agent loops max 3 times to prevent infinite recursion
 
 ---
 
 ## 🔮 Future Improvements
 
-- Add PostgreSQL + Redis for production scale
+- Human in the loop — agent asks for clarification when stuck
+- Web search tool fallback when RAG finds no matches
+- Memory across sessions using PostgreSQL
 - Slack/PagerDuty integration for real-time alerting
-- Support for more log formats (AWS CloudWatch, Datadog)
-- Fine-tune the LLM on real incident data
+- Fine-tune on real incident data
