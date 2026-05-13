@@ -172,6 +172,11 @@ if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
                                 st.write(f"**Fix Applied:** {inc['fix']}")
 
                     st.subheader("🔗 RAG Context")
+                    rag_source = result.get("rag_source", "chromadb")
+                    if rag_source == "web_search":
+                        st.warning("⚠️ RAG score too low — agent searched the web for similar incidents")
+                    else:
+                        st.success("✅ Match found in internal incident database")
                     st.code(result["rag_context"], language="text")
 
                 st.divider()

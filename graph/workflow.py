@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     confidence_score: int
     needs_reanalysis: bool
     loop_count: int
+    rag_source: str
 
 
 def route_after_validation(state: dict) -> str:
