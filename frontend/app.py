@@ -110,6 +110,45 @@ if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
             if not result.get("is_valid"):
                 step0.update(state="error")
                 st.error(f"❌ Invalid Input: {result.get('validation_reason', 'Input does not appear to be valid system logs.')}")
+
+            elif result.get("fix_suggestions") == "NEEDS_HUMAN_INPUT":
+                step0.update(state="complete")
+                step1.update(state="complete")
+                step1b.update(state="complete")
+                step2.update(state="complete")
+                step3.update(state="complete")
+                step4.update(state="complete")
+                step4b.update(state="error")
+                step5.update(state="error")
+
+                st.warning(f"🤔 Agent is uncertain — Confidence: {result.get('confidence_score', 0)}/100 after {result.get('loop_count', 0)} attempts")
+                st.subheader("💬 Agent needs your help")
+                st.write("The agent analyzed your logs but confidence is too low. Please provide additional context:")
+
+                with st.form("human_input_form"):
+                    st.write("**What additional context can you provide?**")
+                    st.write("Examples: recent deployments, config changes, traffic spikes, anything unusual")
+                    human_context = st.text_area(
+                        "Your context",
+                        height=150,
+                        placeholder="e.g. We deployed a new version 2 hours ago, traffic increased 3x this morning, we changed the database config yesterday..."
+                    )
+                    submitted = st.form_submit_button("🔄 Re-analyze with my context", type="primary", use_container_width=True)
+
+                if submitted and human_context:
+                    with st.spinner("Re-analyzing with your context..."):
+                        response2 = requests.post(
+                            f"{API_URL}/analyze",
+                            json={"logs": logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context}
+                        )
+                        result = response2.json()
+                        st.session_state.analysis_count += 1
+                        st.success("Re-analysis complete!")
+                        st.divider()
+                        st.subheader("🎯 Root Cause")
+                        st.code(result.get("root_cause", ""), language="text")
+                        st.subheader("🛠️ Fix Suggestions")
+                        st.code(result.get("fix_suggestions", ""), language="text")
             else:
                 step0.update(state="complete")
                 step1.update(state="complete")
