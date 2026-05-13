@@ -1,30 +1,29 @@
 import json
+import os
 import chromadb
 from chromadb.utils import embedding_functions
 from config.settings import CHROMA_DB_PATH, COLLECTION_NAME, PAST_INCIDENTS_PATH
 
+USE_LIGHTWEIGHT = os.getenv("USE_LIGHTWEIGHT_EMBEDDINGS", "false").lower() == "true"
 
-def get_vectorstore():
-    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-
-    embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+def get_embedding_function():
+    if USE_LIGHTWEIGHT:
+        return embedding_functions.DefaultEmbeddingFunction()
+    return embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name="all-MiniLM-L6-v2"
     )
 
+def get_vectorstore():
+    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     collection = client.get_or_create_collection(
         name=COLLECTION_NAME,
-        embedding_function=embedding_fn
+        embedding_function=get_embedding_function()
     )
-
     return collection
 
 
 def seed_incidents():
     client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-
-    embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
 
     try:
         client.delete_collection(COLLECTION_NAME)
@@ -34,7 +33,7 @@ def seed_incidents():
 
     collection = client.create_collection(
         name=COLLECTION_NAME,
-        embedding_function=embedding_fn
+        embedding_function=get_embedding_function()
     )
 
     with open(PAST_INCIDENTS_PATH, "r") as f:
@@ -69,7 +68,10 @@ def seed_incidents():
         ids=ids
     )
 
-    print(f"Seeded {len(incidents)} incidents with SentenceTransformer embeddings.")
+    if USE_LIGHTWEIGHT:
+        print(f"Seeded {len(incidents)} incidents with default embeddings.")
+    else:
+        print(f"Seeded {len(incidents)} incidents with SentenceTransformer embeddings.")
 
 
 def search_similar_incidents(query: str, n_results: int = 3):
