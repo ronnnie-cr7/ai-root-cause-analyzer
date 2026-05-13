@@ -44,197 +44,229 @@ if "confidence_scores" not in st.session_state:
 st.title("🔍 AI Root Cause Analyzer")
 st.caption("Agentic AI system that validates, routes, and analyzes logs with confidence-based decision making")
 
-if st.session_state.analysis_count > 0:
+tab1, tab2 = st.tabs(["🔍 Analyze", "🧠 Memory"])
+
+with tab2:
+    st.subheader("🧠 Analysis Memory")
+    st.caption("Persistent memory across all sessions")
+    try:
+        mem_response = requests.get(f"{API_URL}/memory")
+        mem_data = mem_response.json()
+        stats = mem_data.get("stats", {})
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Analyses", stats.get("total_analyses", 0))
+        m2.metric("Avg Confidence", f"{stats.get('avg_confidence', 0)}%")
+        severity_counts = stats.get("severity_counts", {})
+        m3.metric("Critical Incidents", severity_counts.get("CRITICAL", 0))
+
+        st.divider()
+        st.subheader("Recent Analyses")
+        recent = mem_data.get("recent_analyses", [])
+        if recent:
+            for analysis in recent:
+                with st.expander(f"{analysis['timestamp'][:16]} — {analysis['log_type'].upper()} — {analysis['severity']}"):
+                    st.write(f"**Confidence:** {analysis['confidence_score']}/100")
+                    st.write(f"**RAG Source:** {analysis['rag_source']}")
+                    st.write(f"**Root Cause Preview:** {analysis['root_cause'][:300]}")
+        else:
+            st.info("No analyses yet. Run your first analysis to see memory.")
+    except Exception as e:
+        st.error(f"Could not load memory: {e}")
+
+with tab1:
+    if st.session_state.analysis_count > 0:
+        st.divider()
+        st.subheader("📊 Session Dashboard")
+        d1, d2, d3, d4 = st.columns(4)
+        d1.metric("Analyses Run", st.session_state.analysis_count)
+        d2.metric("Avg Confidence", f"{int(sum(st.session_state.confidence_scores) / len(st.session_state.confidence_scores))}%" if st.session_state.confidence_scores else "N/A")
+        d3.metric("Last Anomaly Type", st.session_state.anomaly_types[-1] if st.session_state.anomaly_types else "N/A")
+        d4.metric("Total Loops", sum(st.session_state.get("loop_counts", [0])))
+
     st.divider()
-    st.subheader("📊 Session Dashboard")
-    d1, d2, d3, d4 = st.columns(4)
-    d1.metric("Analyses Run", st.session_state.analysis_count)
-    d2.metric("Avg Confidence", f"{int(sum(st.session_state.confidence_scores) / len(st.session_state.confidence_scores))}%" if st.session_state.confidence_scores else "N/A")
-    d3.metric("Last Anomaly Type", st.session_state.anomaly_types[-1] if st.session_state.anomaly_types else "N/A")
-    d4.metric("Total Loops", sum(st.session_state.get("loop_counts", [0])))
 
-st.divider()
+    st.write("**Quick Load Sample Logs:**")
+    col1, col2, col3 = st.columns(3)
 
-st.write("**Quick Load Sample Logs:**")
-col1, col2, col3 = st.columns(3)
+    if col1.button("🐍 Python Error", use_container_width=True):
+        st.session_state.sample_log = SAMPLE_LOG
 
-if col1.button("🐍 Python Error", use_container_width=True):
-    st.session_state.sample_log = SAMPLE_LOG
+    if col2.button("🌐 Nginx 502 Error", use_container_width=True):
+        st.session_state.sample_log = SAMPLE_NGINX
 
-if col2.button("🌐 Nginx 502 Error", use_container_width=True):
-    st.session_state.sample_log = SAMPLE_NGINX
+    if col3.button("☸️ Kubernetes CrashLoop", use_container_width=True):
+        st.session_state.sample_log = SAMPLE_KUBERNETES
 
-if col3.button("☸️ Kubernetes CrashLoop", use_container_width=True):
-    st.session_state.sample_log = SAMPLE_KUBERNETES
+    st.divider()
 
-st.divider()
+    input_method = st.radio("Input Method", ["Paste Logs", "Upload Log File"], horizontal=True)
 
-input_method = st.radio("Input Method", ["Paste Logs", "Upload Log File"], horizontal=True)
+    logs = None
 
-logs = None
-
-if input_method == "Paste Logs":
-    default = st.session_state.get("sample_log", "")
-    logs = st.text_area("Paste your logs here", value=default, height=200, placeholder="Paste raw logs or click a sample above...")
-else:
-    uploaded_file = st.file_uploader("Upload a log file", type=["log", "txt"])
-    if uploaded_file:
-        logs = uploaded_file.read().decode("utf-8")
-        st.code(logs, language="text")
-
-st.divider()
-
-if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
-    if not logs or logs.strip() == "":
-        st.error("Please provide logs first.")
+    if input_method == "Paste Logs":
+        default = st.session_state.get("sample_log", "")
+        logs = st.text_area("Paste your logs here", value=default, height=200, placeholder="Paste raw logs or click a sample above...")
     else:
-        st.subheader("⚙️ Agents Running...")
-        step0 = st.status("🛡️ Validator Agent — Checking input", expanded=False)
-        step1 = st.status("📋 Log Parser Agent", expanded=False)
-        step1b = st.status("🔀 Router Agent — Deciding strategy", expanded=False)
-        step2 = st.status("⚠️ Anomaly Detection Agent", expanded=False)
-        step3 = st.status("🕰️ RAG Agent — Searching past incidents", expanded=False)
-        step4 = st.status("🎯 Root Cause Agent", expanded=False)
-        step4b = st.status("🔍 Confidence Checker", expanded=False)
-        step5 = st.status("🛠️ Fix Suggestion Agent", expanded=False)
+        uploaded_file = st.file_uploader("Upload a log file", type=["log", "txt"])
+        if uploaded_file:
+            logs = uploaded_file.read().decode("utf-8")
+            st.code(logs, language="text")
 
-        step0.update(state="running")
+    st.divider()
 
-        try:
-            response = requests.post(
-                f"{API_URL}/analyze",
-                json={"logs": logs}
-            )
-            result = response.json()
+    if st.button("🚀 Analyze Logs", type="primary", use_container_width=True):
+        if not logs or logs.strip() == "":
+            st.error("Please provide logs first.")
+        else:
+            st.subheader("⚙️ Agents Running...")
+            step0 = st.status("🛡️ Validator Agent — Checking input", expanded=False)
+            step1 = st.status("📋 Log Parser Agent", expanded=False)
+            step1b = st.status("🔀 Router Agent — Deciding strategy", expanded=False)
+            step2 = st.status("⚠️ Anomaly Detection Agent", expanded=False)
+            step3 = st.status("🕰️ RAG Agent — Searching past incidents", expanded=False)
+            step4 = st.status("🎯 Root Cause Agent", expanded=False)
+            step4b = st.status("🔍 Confidence Checker", expanded=False)
+            step5 = st.status("🛠️ Fix Suggestion Agent", expanded=False)
 
-            if not result.get("is_valid"):
-                step0.update(state="error")
-                st.error(f"❌ Invalid Input: {result.get('validation_reason', 'Input does not appear to be valid system logs.')}")
+            step0.update(state="running")
 
-            elif result.get("fix_suggestions") == "NEEDS_HUMAN_INPUT":
-                step0.update(state="complete")
-                step1.update(state="complete")
-                step1b.update(state="complete")
-                step2.update(state="complete")
-                step3.update(state="complete")
-                step4.update(state="complete")
-                step4b.update(state="error")
-                step5.update(state="error")
+            try:
+                response = requests.post(
+                    f"{API_URL}/analyze",
+                    json={"logs": logs}
+                )
+                result = response.json()
 
-                st.warning(f"🤔 Agent is uncertain — Confidence: {result.get('confidence_score', 0)}/100 after {result.get('loop_count', 0)} attempts")
-                st.subheader("💬 Agent needs your help")
-                st.write("The agent analyzed your logs but confidence is too low. Please provide additional context:")
+                if not result.get("is_valid"):
+                    step0.update(state="error")
+                    st.error(f"❌ Invalid Input: {result.get('validation_reason', 'Input does not appear to be valid system logs.')}")
 
-                with st.form("human_input_form"):
-                    st.write("**What additional context can you provide?**")
-                    st.write("Examples: recent deployments, config changes, traffic spikes, anything unusual")
-                    human_context = st.text_area(
-                        "Your context",
-                        height=150,
-                        placeholder="e.g. We deployed a new version 2 hours ago, traffic increased 3x this morning, we changed the database config yesterday..."
-                    )
-                    submitted = st.form_submit_button("🔄 Re-analyze with my context", type="primary", use_container_width=True)
+                elif result.get("fix_suggestions") == "NEEDS_HUMAN_INPUT":
+                    step0.update(state="complete")
+                    step1.update(state="complete")
+                    step1b.update(state="complete")
+                    step2.update(state="complete")
+                    step3.update(state="complete")
+                    step4.update(state="complete")
+                    step4b.update(state="error")
+                    step5.update(state="error")
 
-                if submitted and human_context:
-                    with st.spinner("Re-analyzing with your context..."):
-                        response2 = requests.post(
-                            f"{API_URL}/analyze",
-                            json={"logs": logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context}
+                    st.warning(f"🤔 Agent is uncertain — Confidence: {result.get('confidence_score', 0)}/100 after {result.get('loop_count', 0)} attempts")
+                    st.subheader("💬 Agent needs your help")
+                    st.write("The agent analyzed your logs but confidence is too low. Please provide additional context:")
+
+                    with st.form("human_input_form"):
+                        st.write("**What additional context can you provide?**")
+                        st.write("Examples: recent deployments, config changes, traffic spikes, anything unusual")
+                        human_context = st.text_area(
+                            "Your context",
+                            height=150,
+                            placeholder="e.g. We deployed a new version 2 hours ago, traffic increased 3x this morning, we changed the database config yesterday..."
                         )
-                        result = response2.json()
-                        st.session_state.analysis_count += 1
-                        st.success("Re-analysis complete!")
-                        st.divider()
-                        st.subheader("🎯 Root Cause")
-                        st.code(result.get("root_cause", ""), language="text")
-                        st.subheader("🛠️ Fix Suggestions")
-                        st.code(result.get("fix_suggestions", ""), language="text")
-            else:
-                step0.update(state="complete")
-                step1.update(state="complete")
-                step1b.update(state="complete")
-                step2.update(state="complete")
-                step3.update(state="complete")
-                step4.update(state="complete")
-                step4b.update(state="complete")
-                step5.update(state="complete")
+                        submitted = st.form_submit_button("🔄 Re-analyze with my context", type="primary", use_container_width=True)
 
-                st.session_state.analysis_count += 1
-                if "loop_counts" not in st.session_state:
-                    st.session_state.loop_counts = []
-                st.session_state.loop_counts.append(result.get("loop_count", 1))
+                    if submitted and human_context:
+                        with st.spinner("Re-analyzing with your context..."):
+                            response2 = requests.post(
+                                f"{API_URL}/analyze",
+                                json={"logs": logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context}
+                            )
+                            result = response2.json()
+                            st.session_state.analysis_count += 1
+                            st.success("Re-analysis complete!")
+                            st.divider()
+                            st.subheader("🎯 Root Cause")
+                            st.code(result.get("root_cause", ""), language="text")
+                            st.subheader("🛠️ Fix Suggestions")
+                            st.code(result.get("fix_suggestions", ""), language="text")
 
-                anomaly_line = [l for l in result["anomaly_report"].split("\n") if "ANOMALY TYPE:" in l]
-                if anomaly_line:
-                    st.session_state.anomaly_types.append(anomaly_line[0].replace("ANOMALY TYPE:", "").strip())
-                rc_conf = re.search(r'CONFIDENCE:\s*(\d+)/100', result.get("root_cause", ""))
-                if rc_conf:
-                    st.session_state.confidence_scores.append(int(rc_conf.group(1)))
-
-                severity = result.get("severity", "UNKNOWN")
-                if severity == "CRITICAL":
-                    st.error(f"🚨 Severity: {severity}")
-                elif severity == "HIGH":
-                    st.warning(f"⚠️ Severity: {severity}")
                 else:
-                    st.info(f"ℹ️ Severity: {severity}")
+                    step0.update(state="complete")
+                    step1.update(state="complete")
+                    step1b.update(state="complete")
+                    step2.update(state="complete")
+                    step3.update(state="complete")
+                    step4.update(state="complete")
+                    step4b.update(state="complete")
+                    step5.update(state="complete")
 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Log Type", result.get("log_type", "unknown").upper())
-                c2.metric("Confidence Score", f"{result.get('confidence_score', 0)}/100")
-                c3.metric("Analysis Loops", result.get("loop_count", 1))
+                    st.session_state.analysis_count += 1
+                    if "loop_counts" not in st.session_state:
+                        st.session_state.loop_counts = []
+                    st.session_state.loop_counts.append(result.get("loop_count", 1))
 
-                st.divider()
+                    anomaly_line = [l for l in result["anomaly_report"].split("\n") if "ANOMALY TYPE:" in l]
+                    if anomaly_line:
+                        st.session_state.anomaly_types.append(anomaly_line[0].replace("ANOMALY TYPE:", "").strip())
+                    rc_conf = re.search(r'CONFIDENCE:\s*(\d+)/100', result.get("root_cause", ""))
+                    if rc_conf:
+                        st.session_state.confidence_scores.append(int(rc_conf.group(1)))
 
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.subheader("📋 Parsed Logs")
-                    st.code(result["parsed_logs"], language="text")
-
-                    st.subheader("⚠️ Anomaly Report")
-                    anomaly_text = result["anomaly_report"]
-                    confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', anomaly_text)
-                    if confidence_match:
-                        confidence = int(confidence_match.group(1))
-                        st.metric("Anomaly Confidence", f"{confidence}/100")
-                        st.progress(confidence / 100)
-                    st.code(anomaly_text, language="text")
-
-                with col2:
-                    st.subheader("🕰️ Similar Past Incidents")
-                    if result["similar_incidents"]:
-                        for inc in result["similar_incidents"]:
-                            with st.expander(f"{inc['id']} — {inc['title']} (score: {inc['similarity_score']})"):
-                                st.write(f"**Date:** {inc['date']}")
-                                st.write(f"**Root Cause:** {inc['root_cause']}")
-                                st.write(f"**Fix Applied:** {inc['fix']}")
-
-                    st.subheader("🔗 RAG Context")
-                    rag_source = result.get("rag_source", "chromadb")
-                    if rag_source == "web_search":
-                        st.warning("⚠️ RAG score too low — agent searched the web for similar incidents")
+                    severity = result.get("severity", "UNKNOWN")
+                    if severity == "CRITICAL":
+                        st.error(f"🚨 Severity: {severity}")
+                    elif severity == "HIGH":
+                        st.warning(f"⚠️ Severity: {severity}")
                     else:
-                        st.success("✅ Match found in internal incident database")
-                    st.code(result["rag_context"], language="text")
+                        st.info(f"ℹ️ Severity: {severity}")
 
-                st.divider()
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Log Type", result.get("log_type", "unknown").upper())
+                    c2.metric("Confidence Score", f"{result.get('confidence_score', 0)}/100")
+                    c3.metric("Analysis Loops", result.get("loop_count", 1))
 
-                st.subheader("🎯 Root Cause")
-                root_cause_text = result["root_cause"]
-                rc_confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', root_cause_text)
-                if rc_confidence_match:
-                    rc_confidence = int(rc_confidence_match.group(1))
-                    st.metric("Root Cause Confidence", f"{rc_confidence}/100")
-                    st.progress(rc_confidence / 100)
-                st.code(root_cause_text, language="text")
+                    st.divider()
 
-                st.subheader("🛠️ Fix Suggestions")
-                st.code(result["fix_suggestions"], language="text")
+                    col1, col2 = st.columns(2)
 
-                st.divider()
+                    with col1:
+                        st.subheader("📋 Parsed Logs")
+                        st.code(result["parsed_logs"], language="text")
 
-                full_report = f"""
+                        st.subheader("⚠️ Anomaly Report")
+                        anomaly_text = result["anomaly_report"]
+                        confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', anomaly_text)
+                        if confidence_match:
+                            confidence = int(confidence_match.group(1))
+                            st.metric("Anomaly Confidence", f"{confidence}/100")
+                            st.progress(confidence / 100)
+                        st.code(anomaly_text, language="text")
+
+                    with col2:
+                        st.subheader("🕰️ Similar Past Incidents")
+                        if result["similar_incidents"]:
+                            for inc in result["similar_incidents"]:
+                                with st.expander(f"{inc['id']} — {inc['title']} (score: {inc['similarity_score']})"):
+                                    st.write(f"**Date:** {inc['date']}")
+                                    st.write(f"**Root Cause:** {inc['root_cause']}")
+                                    st.write(f"**Fix Applied:** {inc['fix']}")
+
+                        st.subheader("🔗 RAG Context")
+                        rag_source = result.get("rag_source", "chromadb")
+                        if rag_source == "web_search":
+                            st.warning("⚠️ RAG score too low — agent searched the web for similar incidents")
+                        else:
+                            st.success("✅ Match found in internal incident database")
+                        st.code(result["rag_context"], language="text")
+
+                    st.divider()
+
+                    st.subheader("🎯 Root Cause")
+                    root_cause_text = result["root_cause"]
+                    rc_confidence_match = re.search(r'CONFIDENCE:\s*(\d+)/100', root_cause_text)
+                    if rc_confidence_match:
+                        rc_confidence = int(rc_confidence_match.group(1))
+                        st.metric("Root Cause Confidence", f"{rc_confidence}/100")
+                        st.progress(rc_confidence / 100)
+                    st.code(root_cause_text, language="text")
+
+                    st.subheader("🛠️ Fix Suggestions")
+                    st.code(result["fix_suggestions"], language="text")
+
+                    st.divider()
+
+                    full_report = f"""
 AI ROOT CAUSE ANALYZER — FULL REPORT
 Generated by AI Root Cause Analyzer
 =====================================
@@ -255,14 +287,14 @@ ANOMALY REPORT
 SIMILAR PAST INCIDENTS
 ----------------------
 """
-                for inc in result["similar_incidents"]:
-                    full_report += f"""
+                    for inc in result["similar_incidents"]:
+                        full_report += f"""
 {inc["id"]} — {inc["title"]} (similarity: {inc["similarity_score"]})
 Date: {inc["date"]}
 Root Cause: {inc["root_cause"]}
 Fix: {inc["fix"]}
 """
-                full_report += f"""
+                    full_report += f"""
 RAG CONTEXT
 -----------
 {result["rag_context"]}
@@ -276,14 +308,14 @@ FIX SUGGESTIONS
 {result["fix_suggestions"]}
 """
 
-                st.download_button(
-                    label="📥 Download Full Report",
-                    data=full_report,
-                    file_name="root_cause_report.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
+                    st.download_button(
+                        label="📥 Download Full Report",
+                        data=full_report,
+                        file_name="root_cause_report.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
 
-        except Exception as e:
-            step0.update(state="error")
-            st.error(f"Error connecting to API: {e}")
+            except Exception as e:
+                step0.update(state="error")
+                st.error(f"Error connecting to API: {e}")
