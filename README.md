@@ -1,6 +1,6 @@
 # 🔍 AI Root Cause Analyzer
 
-A production-grade agentic AI system that validates, routes, and analyzes system logs using a multi-agent LangGraph architecture with confidence-based decision making, web search fallback, human-in-the-loop, and persistent memory.
+An Agentic AI system that validates, routes, and analyzes system logs using a multi-agent LangGraph architecture with confidence-based decision making, web search fallback, human-in-the-loop, and persistent memory.
 
 Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 
