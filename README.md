@@ -7,7 +7,7 @@ Built with LangGraph, LangChain, Groq, ChromaDB, FastAPI, and Streamlit.
 ## 🌐 Live Demo
 
 - **Frontend:** https://ai-root-cause-analyzer.streamlit.app
-- **API Docs:** https://ai-root-cause-analyzer-mogq.onrender.com/docs
+- **API Docs:** https://ronityadav8905-ai-root-cause-analyzer-api.hf.space/docs
 
 ---
 
