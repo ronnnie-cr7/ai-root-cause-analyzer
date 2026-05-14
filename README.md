@@ -23,7 +23,7 @@ Input → [Validator] → [Log Parser] → [Router] → [Anomaly Detector] → [
                                                         score<80   score<60       score≥80
                                                       loop back   ask human      [Fix Agent]
                                                       to RAG      for context        ↓
-                                                    (max 2 loops)                Final Report
+                                                    (max 3 attempts)             Final Report
                                                                                       ↓
                                                                                [SQLite Memory]
 ```
@@ -33,7 +33,7 @@ This is a true agentic system — not a fixed pipeline:
 - **Routes** based on severity (CRITICAL / HIGH / LOW)
 - **Loops back** if confidence is too low
 - **Falls back to web search** if RAG similarity < 0.6
-- **Asks a human** when stuck after 2 loops
+- **Asks a human** when stuck after 3 attempts
 - **Remembers** all past analyses in SQLite
 
 ---
@@ -66,7 +66,7 @@ This is a true agentic system — not a fixed pipeline:
 | Persistent Memory | SQLite |
 | Backend API | FastAPI |
 | Frontend | Streamlit |
-| Deployment | Docker + Docker Compose |
+| Deployment | Docker + Hugging Face Spaces + Streamlit Cloud |
 
 ---
 
@@ -97,6 +97,10 @@ docker-compose up --build
 - API: http://localhost:8000/docs
 - Frontend: http://localhost:8501
 
+### 5. Live Deployment
+- **Frontend:** Streamlit Community Cloud
+- **Backend API:** Hugging Face Spaces (Docker) — no cold starts, runs 24/7
+
 ---
 
 ## 📸 Demo Flow
@@ -105,7 +109,7 @@ docker-compose up --build
 2. Watch 8 agents run with live status updates
 3. System validates, routes by severity, analyzes with confidence scoring
 4. If RAG similarity < 0.6 — agent searches the web automatically
-5. If confidence < 60 after 2 loops — agent asks you for more context
+5. If confidence < 60 after 3 attempts — agent asks you for more context
 6. Download the full report, check Memory tab for history
 
 ---
@@ -116,7 +120,7 @@ docker-compose up --build
 - **Severity routing** — CRITICAL / HIGH / LOW with visual badges
 - **Confidence loop** — re-analyzes if confidence below 80%
 - **Web search fallback** — DuckDuckGo search when RAG score < 0.6
-- **Human in the loop** — asks engineer for context when stuck
+- **Human in the loop** — asks engineer for context when stuck after 3 attempts
 - **Persistent memory** — SQLite stores all analyses across sessions
 - **Memory tab** — view history, total analyses, avg confidence
 - **3 sample log types** — Python, Nginx, Kubernetes
@@ -162,6 +166,7 @@ ai-root-cause-analyzer/
 - **SQLite memory** — zero infrastructure, persistent across sessions
 - **Validator guardrail** — invalid input rejected before any LLM calls
 - **SentenceTransformer embeddings** — 0.7+ similarity vs 0.1 with defaults
+- **HF Spaces deployment** — no cold starts, no spin downs, runs 24/7 for free
 
 ---
 
@@ -169,6 +174,6 @@ ai-root-cause-analyzer/
 
 - Parallel agents for faster analysis
 - Slack/PagerDuty integration for real-time alerting
-- Auto-add resolved incidents to ChromaDB
+- Auto-add resolved incidents to ChromaDB so RAG gets smarter over time
 - Fine-tune on real incident data
 - Voice interface
