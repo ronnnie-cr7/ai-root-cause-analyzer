@@ -53,30 +53,34 @@ tab1, tab2 = st.tabs(["🔍 Analyze", "🧠 Memory"])
 with tab2:
     st.subheader("🧠 Analysis Memory")
     st.caption("Persistent memory across all sessions")
-    try:
-        mem_response = requests.get(f"{API_URL}/memory")
-        mem_data = mem_response.json()
-        stats = mem_data.get("stats", {})
+    st.info("Click below to load memory from the API.")
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Analyses", stats.get("total_analyses", 0))
-        m2.metric("Avg Confidence", f"{stats.get('avg_confidence', 0)}%")
-        severity_counts = stats.get("severity_counts", {})
-        m3.metric("Critical Incidents", severity_counts.get("CRITICAL", 0))
+    if st.button("🔄 Load Memory", use_container_width=True):
+        try:
+            with st.spinner("Connecting to API..."):
+                mem_response = requests.get(f"{API_URL}/memory", timeout=30)
+                mem_data = mem_response.json()
+                stats = mem_data.get("stats", {})
 
-        st.divider()
-        st.subheader("Recent Analyses")
-        recent = mem_data.get("recent_analyses", [])
-        if recent:
-            for analysis in recent:
-                with st.expander(f"{analysis['timestamp'][:16]} — {analysis['log_type'].upper()} — {analysis['severity']}"):
-                    st.write(f"**Confidence:** {analysis['confidence_score']}/100")
-                    st.write(f"**RAG Source:** {analysis['rag_source']}")
-                    st.write(f"**Root Cause Preview:** {analysis['root_cause'][:300]}")
-        else:
-            st.info("No analyses yet. Run your first analysis to see memory.")
-    except Exception as e:
-        st.error(f"Could not load memory: {e}")
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Total Analyses", stats.get("total_analyses", 0))
+                m2.metric("Avg Confidence", f"{stats.get('avg_confidence', 0)}%")
+                severity_counts = stats.get("severity_counts", {})
+                m3.metric("Critical Incidents", severity_counts.get("CRITICAL", 0))
+
+                st.divider()
+                st.subheader("Recent Analyses")
+                recent = mem_data.get("recent_analyses", [])
+                if recent:
+                    for analysis in recent:
+                        with st.expander(f"{analysis['timestamp'][:16]} — {analysis['log_type'].upper()} — {analysis['severity']}"):
+                            st.write(f"**Confidence:** {analysis['confidence_score']}/100")
+                            st.write(f"**RAG Source:** {analysis['rag_source']}")
+                            st.write(f"**Root Cause Preview:** {analysis['root_cause'][:300]}")
+                else:
+                    st.info("No analyses yet. Run your first analysis to see memory.")
+        except Exception as e:
+            st.error("Could not load memory — API may still be starting up. Try again in 30 seconds.")
 
 with tab1:
     if st.session_state.analysis_count > 0:
@@ -328,7 +332,7 @@ FIX SUGGESTIONS
                             f"{API_URL}/reanalyze",
                             json={"logs": st.session_state.hitl_logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context},
                             timeout=180
-                            )
+                        )
                         result2 = response2.json()
                         st.session_state.hitl_result = None
                         st.session_state.analysis_count += 1
