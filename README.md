@@ -20,7 +20,7 @@ Input → [Validator] → [Log Parser] → [Router] → [Anomaly Detector] → [
                                                                            ↓
                                                                   [Confidence Checker]
                                                               ↙         ↓           ↘
-                                                        score<80   score<60       score≥80
+                                                        score<90   score<85       score≥90
                                                       loop back   ask human      [Fix Agent]
                                                       to RAG      for context        ↓
                                                     (max 3 attempts)             Final Report
@@ -109,7 +109,7 @@ docker-compose up --build
 2. Watch 8 agents run with live status updates
 3. System validates, routes by severity, analyzes with confidence scoring
 4. If RAG similarity < 0.6 — agent searches the web automatically
-5. If confidence < 60 after 3 attempts — agent asks you for more context
+5. If confidence < 85 after 3 attempts — agent asks you for more context
 6. Download the full report, check Memory tab for history
 
 ---
@@ -118,9 +118,9 @@ docker-compose up --build
 
 - **Input validation** — rejects garbage before wasting API calls
 - **Severity routing** — CRITICAL / HIGH / LOW with visual badges
-- **Confidence loop** — re-analyzes if confidence below 80%
+- **Confidence loop** — re-analyzes if confidence below 90%
 - **Web search fallback** — DuckDuckGo search when RAG score < 0.6
-- **Human in the loop** — asks engineer for context when stuck after 3 attempts
+- **Human in the loop** — asks engineer for context when confidence below 85 after 3 attempts
 - **Persistent memory** — SQLite stores all analyses across sessions
 - **Memory tab** — view history, total analyses, avg confidence
 - **3 sample log types** — Python, Nginx, Kubernetes
@@ -177,3 +177,9 @@ ai-root-cause-analyzer/
 - Auto-add resolved incidents to ChromaDB so RAG gets smarter over time
 - Fine-tune on real incident data
 - Voice interface
+
+---
+
+## 👨‍💻 Author
+
+**Ronit**
