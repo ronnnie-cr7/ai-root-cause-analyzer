@@ -16,7 +16,7 @@ def confidence_checker(state: dict) -> dict:
         state["needs_reanalysis"] = False
         state["needs_human_input"] = False
         print(f">> Confidence {confidence}/100 — proceeding to fix agent")
-    elif loop_count >= 2 and confidence < 80:
+    elif loop_count >= 2 and confidence < 85:
         state["needs_reanalysis"] = False
         state["needs_human_input"] = True
         print(f">> Confidence {confidence}/100 after {loop_count} loops — requesting human input")
