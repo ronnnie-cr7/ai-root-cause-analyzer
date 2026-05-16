@@ -40,6 +40,10 @@ if "anomaly_types" not in st.session_state:
     st.session_state.anomaly_types = []
 if "confidence_scores" not in st.session_state:
     st.session_state.confidence_scores = []
+if "hitl_result" not in st.session_state:
+    st.session_state.hitl_result = None
+if "hitl_logs" not in st.session_state:
+    st.session_state.hitl_logs = None
 
 st.title("🔍 AI Root Cause Analyzer")
 st.caption("Agentic AI system that validates, routes, and analyzes logs with confidence-based decision making")
@@ -91,12 +95,18 @@ with tab1:
 
     if col1.button("🐍 Python Error", use_container_width=True):
         st.session_state.sample_log = SAMPLE_LOG
+        st.session_state.hitl_result = None
+        st.session_state.hitl_logs = None
 
     if col2.button("🌐 Nginx 502 Error", use_container_width=True):
         st.session_state.sample_log = SAMPLE_NGINX
+        st.session_state.hitl_result = None
+        st.session_state.hitl_logs = None
 
     if col3.button("☸️ Kubernetes CrashLoop", use_container_width=True):
         st.session_state.sample_log = SAMPLE_KUBERNETES
+        st.session_state.hitl_result = None
+        st.session_state.hitl_logs = None
 
     st.divider()
 
@@ -119,6 +129,9 @@ with tab1:
         if not logs or logs.strip() == "":
             st.error("Please provide logs first.")
         else:
+            st.session_state.hitl_result = None
+            st.session_state.hitl_logs = logs
+
             st.subheader("⚙️ Agents Running...")
             step0 = st.status("🛡️ Validator Agent — Checking input", expanded=False)
             step1 = st.status("📋 Log Parser Agent", expanded=False)
@@ -134,7 +147,8 @@ with tab1:
             try:
                 response = requests.post(
                     f"{API_URL}/analyze",
-                    json={"logs": logs}
+                    json={"logs": logs},
+                    timeout=180
                 )
                 result = response.json()
 
@@ -143,6 +157,7 @@ with tab1:
                     st.error(f"❌ Invalid Input: {result.get('validation_reason', 'Input does not appear to be valid system logs.')}")
 
                 elif result.get("fix_suggestions") == "NEEDS_HUMAN_INPUT":
+                    st.session_state.hitl_result = result
                     step0.update(state="complete")
                     step1.update(state="complete")
                     step1b.update(state="complete")
@@ -151,35 +166,6 @@ with tab1:
                     step4.update(state="complete")
                     step4b.update(state="error")
                     step5.update(state="error")
-
-                    st.warning(f"🤔 Agent is uncertain — Confidence: {result.get('confidence_score', 0)}/100 after {result.get('loop_count', 0)} attempts")
-                    st.subheader("💬 Agent needs your help")
-                    st.write("The agent analyzed your logs but confidence is too low. Please provide additional context:")
-
-                    with st.form("human_input_form"):
-                        st.write("**What additional context can you provide?**")
-                        st.write("Examples: recent deployments, config changes, traffic spikes, anything unusual")
-                        human_context = st.text_area(
-                            "Your context",
-                            height=150,
-                            placeholder="e.g. We deployed a new version 2 hours ago, traffic increased 3x this morning, we changed the database config yesterday..."
-                        )
-                        submitted = st.form_submit_button("🔄 Re-analyze with my context", type="primary", use_container_width=True)
-
-                    if submitted and human_context:
-                        with st.spinner("Re-analyzing with your context..."):
-                            response2 = requests.post(
-                                f"{API_URL}/analyze",
-                                json={"logs": logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context}
-                            )
-                            result = response2.json()
-                            st.session_state.analysis_count += 1
-                            st.success("Re-analysis complete!")
-                            st.divider()
-                            st.subheader("🎯 Root Cause")
-                            st.code(result.get("root_cause", ""), language="text")
-                            st.subheader("🛠️ Fix Suggestions")
-                            st.code(result.get("fix_suggestions", ""), language="text")
 
                 else:
                     step0.update(state="complete")
@@ -319,3 +305,61 @@ FIX SUGGESTIONS
             except Exception as e:
                 step0.update(state="error")
                 st.error(f"Error connecting to API: {e}")
+
+    # HITL section — outside the analyze button block
+    if st.session_state.hitl_result is not None:
+        result = st.session_state.hitl_result
+        st.warning(f"🤔 Agent is uncertain — Confidence: {result.get('confidence_score', 0)}/100 after {result.get('loop_count', 0)} attempts")
+        st.subheader("💬 Agent needs your help")
+        st.write("The agent analyzed your logs but confidence is too low. Please provide additional context:")
+
+        human_context = st.text_area(
+            "Your context",
+            height=150,
+            placeholder="e.g. We deployed a new version 2 hours ago, traffic increased 3x this morning...",
+            key="human_context_input"
+        )
+
+        if st.button("🔄 Re-analyze with my context", type="primary", use_container_width=True, key="reanalyze_btn"):
+            if human_context:
+                with st.spinner("Re-analyzing with your context..."):
+                    try:
+                        response2 = requests.post(
+                            f"{API_URL}/analyze",
+                            json={"logs": st.session_state.hitl_logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context},
+                            timeout=180
+                        )
+                        result2 = response2.json()
+                        st.session_state.hitl_result = None
+                        st.session_state.analysis_count += 1
+                        st.success("✅ Re-analysis complete!")
+                        st.divider()
+
+                        severity2 = result2.get("severity", "UNKNOWN")
+                        if severity2 == "CRITICAL":
+                            st.error(f"🚨 Severity: {severity2}")
+                        elif severity2 == "HIGH":
+                            st.warning(f"⚠️ Severity: {severity2}")
+                        else:
+                            st.info(f"ℹ️ Severity: {severity2}")
+
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("Log Type", result2.get("log_type", "unknown").upper())
+                        c2.metric("Confidence Score", f"{result2.get('confidence_score', 0)}/100")
+                        c3.metric("Analysis Loops", result2.get("loop_count", 1))
+
+                        st.subheader("🎯 Root Cause")
+                        root_cause_text2 = result2.get("root_cause", "")
+                        rc_conf2 = re.search(r'CONFIDENCE:\s*(\d+)/100', root_cause_text2)
+                        if rc_conf2:
+                            st.metric("Root Cause Confidence", f"{rc_conf2.group(1)}/100")
+                            st.progress(int(rc_conf2.group(1)) / 100)
+                        st.code(root_cause_text2, language="text")
+
+                        st.subheader("🛠️ Fix Suggestions")
+                        st.code(result2.get("fix_suggestions", ""), language="text")
+
+                    except Exception as e:
+                        st.error(f"Error during re-analysis: {e}")
+            else:
+                st.error("Please provide some context first.")
