@@ -73,5 +73,26 @@ def get_memory():
         "stats": get_stats()
     }
 
+@app.post("/reanalyze")
+async def reanalyze_logs(input: LogInput):
+    result = run_analysis(input.logs)
+    if result.get("is_valid"):
+        save_analysis(result, input.logs)
+    return {
+        "is_valid": result.get("is_valid"),
+        "validation_reason": result.get("validation_reason"),
+        "severity": result.get("severity"),
+        "log_type": result.get("log_type"),
+        "parsed_logs": result.get("parsed_logs"),
+        "anomaly_report": result.get("anomaly_report"),
+        "rag_context": result.get("rag_context"),
+        "root_cause": result.get("root_cause"),
+        "fix_suggestions": result.get("fix_suggestions") if result.get("fix_suggestions") != "NEEDS_HUMAN_INPUT" else "Based on the context provided, further manual investigation is recommended. Check recent deployments, config changes, and resource utilization.",
+        "similar_incidents": result.get("similar_incidents_raw", []),
+        "confidence_score": result.get("confidence_score"),
+        "loop_count": result.get("loop_count"),
+        "rag_source": result.get("rag_source")
+    }
+
 if __name__ == "__main__":
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

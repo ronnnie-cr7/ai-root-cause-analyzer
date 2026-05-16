@@ -325,10 +325,10 @@ FIX SUGGESTIONS
                 with st.spinner("Re-analyzing with your context..."):
                     try:
                         response2 = requests.post(
-                            f"{API_URL}/analyze",
+                            f"{API_URL}/reanalyze",
                             json={"logs": st.session_state.hitl_logs + "\n\nADDITIONAL CONTEXT FROM ENGINEER:\n" + human_context},
                             timeout=180
-                        )
+                            )
                         result2 = response2.json()
                         st.session_state.hitl_result = None
                         st.session_state.analysis_count += 1
