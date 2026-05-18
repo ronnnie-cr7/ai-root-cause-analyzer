@@ -4,8 +4,6 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?style=flat-square&logo=streamlit)](https://ai-root-cause-analyzer.streamlit.app)
 [![API Docs](https://img.shields.io/badge/API%20Docs-FastAPI-009688?style=flat-square&logo=fastapi)](https://ronityadav8905-ai-root-cause-analyzer-api.hf.space/docs)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue?style=flat-square&logo=python)](https://python.org)
-[![LangGraph](https://img.shields.io/badge/LangGraph-Agentic-orange?style=flat-square)](https://python.langchain.com/langgraph/)
 
 ---
 
